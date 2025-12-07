@@ -1,0 +1,26 @@
+{
+  "name": "compression-tool",
+  "version": "1.0.0",
+  "description": "A custom implementation of text compression using huffman coding",
+  "main": "dist/src/index.js",
+  "bin": {
+    "my-compress": "dist/bin/my-compress.js"
+  },
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "build": "tsc",
+    "test": "jest",
+    "prepare": "npm run build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.10.1",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
