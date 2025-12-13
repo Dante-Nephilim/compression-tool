@@ -10,10 +10,13 @@ export async function parseArgumentsAndRun(): Promise<void> {
       process.stdin.on("end", () => resolve(input));
     });
   }
+
   function logEncodedOrDecodedContent(flag: string, content: string) {
     if (flag === "-c") {
       console.log("Compressing content...");
-      console.log(compress(content));
+      const buf = compress(content);
+      // For stdin/direct text, print hex so it’s inspectable
+      console.log(buf.toString("hex"));
     } else if (flag === "-dc") {
       console.log("Decompressing content...");
       console.log(decompress(content));
@@ -25,40 +28,39 @@ export async function parseArgumentsAndRun(): Promise<void> {
   let flag: string | null = null;
   let filePath: string | null = null;
 
-  // Help Message
+  // Help
   if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
     const helpMessage = `my-compression - A custom implementation of compression tool
-    Usage:
-    my-compression [option] <filename.extension>
+Usage:
+  my-compression [option] <filename.extension>
 
-    Options:
-    -c    Compress File
-    -dc    DeCompress File
-    -h, --help    Show this help message`;
+Options:
+  -c       Compress file
+  -dc      Decompress file
+  -h, --help   Show this help message`;
     console.log(helpMessage);
     process.exit(0);
   }
-  // Read from stdin
+
+  // Stdin mode: my-compress -c < input.txt
   if (args.length === 1 && args[0].startsWith("-") && !process.stdin.isTTY) {
     const input = await readFromStdin();
     logEncodedOrDecodedContent(args[0], input);
     return;
   }
-  // Argument Parsing
-  else if (args.length === 1) {
+
+  // Args parsing
+  if (args.length === 1) {
     if (args[0].startsWith("-")) {
       console.error("Please provide a file name after the flag.\nUsage: my-compression [-c|-dc] <filename.extension>");
       process.exit(1);
     }
-    // Check for file extension
     if (!args[0].includes(".")) {
       console.error("The file name needs to be provided with extension. Eg: filename.extension");
       process.exit(1);
     }
     filePath = args[0];
-  }
-  // With Flag and File
-  else if (args.length === 2) {
+  } else if (args.length === 2) {
     flag = args[0];
     filePath = args[1];
     const validFlags = ["-c", "-dc"];
@@ -66,24 +68,28 @@ export async function parseArgumentsAndRun(): Promise<void> {
       console.error(`Invalid flag: ${flag}`);
       process.exit(1);
     }
-  }
-  // Invalid Argument Count
-  else {
+  } else {
     console.error("Usage: my-compression [-c|-dc] <filename.extension>");
     process.exit(1);
   }
+
   try {
     const resolvedFilePath = path.resolve(process.cwd(), filePath!);
     const fileContent = await fs.readFile(resolvedFilePath, "utf-8");
+
     if (flag) {
-      // Write encoded or decoded file to the same location
       const outputFilePath = flag === "-c" ? `${resolvedFilePath}.compressed` : `${resolvedFilePath}.decompressed`;
-      await fs.writeFile(outputFilePath, flag === "-c" ? compress(fileContent) : decompress(fileContent), "utf-8");
+
+      const output = flag === "-c" ? compress(fileContent) : decompress(fileContent);
+
+      // compress() returns Buffer, decompress() is still string
+      await fs.writeFile(outputFilePath, output as any);
       console.log(`Output written to ${outputFilePath}`);
     } else {
       console.log("No flag provided. Defaulting to compressing the file...");
       const outputFilePath = `${resolvedFilePath}.compressed`;
-      await fs.writeFile(outputFilePath, compress(fileContent), "utf-8");
+      const output = compress(fileContent);
+      await fs.writeFile(outputFilePath, output);
       console.log(`Output written to ${outputFilePath}`);
     }
   } catch (error) {
